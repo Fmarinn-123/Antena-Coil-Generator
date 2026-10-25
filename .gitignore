@@ -1,0 +1,9 @@
+# Entorno local que crea iniciar_gui.bat
+.venv/
+
+# Resultados generados (STL de decenas de MB por proyecto)
+proyectos/
+salida/
+
+__pycache__/
+*.pyc

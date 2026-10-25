@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generador de bobinas</title>
+<style>
+  :root {
+    --fondo: #f4f3f0;
+    --tarjeta: #fcfcfb;
+    --borde: #dcdad4;
+    --texto: #0b0b0b;
+    --texto-2: #52514e;
+    --texto-3: #7a7974;
+    --acento: #2a78d6;
+    --acento-texto: #ffffff;
+    --ok: #1f7a3a;
+    --aviso: #9a5b00;
+    --error: #b42318;
+    --error-fondo: #fdecea;
+    --globo: #1d1d1c;
+    --globo-texto: #f0efec;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #141413;
+      --tarjeta: #1d1d1c;
+      --borde: #34332f;
+      --texto: #f0efec;
+      --texto-2: #c3c2b7;
+      --texto-3: #8f8e86;
+      --acento: #3987e5;
+      --ok: #4cbb6c;
+      --aviso: #e0a33a;
+      --error: #f2766b;
+      --error-fondo: #3a1d1a;
+      --globo: #f0efec;
+      --globo-texto: #141413;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  header { padding: 18px 24px 6px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 2px 0 0; color: var(--texto-2); }
+  main {
+    display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 18px;
+    padding: 12px 24px 32px; align-items: start;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 12px 16px 24px; } header { padding: 16px 16px 4px; } }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px; padding: 16px; }
+  .tarjeta + .tarjeta { margin-top: 14px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  fieldset { border: 0; padding: 0; margin: 0 0 16px; }
+  legend { font-weight: 600; padding: 0; margin-bottom: 6px; }
+  .campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .campos .ancho { grid-column: 1 / -1; }
+  label { display: block; font-size: 12.5px; color: var(--texto-2); }
+  .ayuda {
+    display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 4px;
+    border-radius: 50%; border: 1px solid var(--texto-3); color: var(--texto-3);
+    font-size: 10px; font-weight: 700; line-height: 1; cursor: help; vertical-align: 1px;
+  }
+  .ayuda:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+  #globo {
+    position: absolute; z-index: 10; max-width: 330px; padding: 9px 11px; border-radius: 8px;
+    background: var(--globo); color: var(--globo-texto); font-size: 12.5px; line-height: 1.45;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .25); pointer-events: none;
+  }
+  input[type=number], input[type=text], select {
+    width: 100%; margin-top: 3px; padding: 7px 9px; font: inherit; color: var(--texto);
+    background: var(--fondo); border: 1px solid var(--borde); border-radius: 6px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: 0; border-color: transparent; }
+  input:disabled { opacity: .5; }
+  .casilla { display: flex; gap: 8px; align-items: flex-start; color: var(--texto); font-size: 13.5px; }
+  .casilla input { margin-top: 3px; }
+  .derivado { font-size: 12px; color: var(--texto-3); margin-top: 6px; }
+  .derivado.malo { color: var(--error); }
+  button {
+    font: inherit; border-radius: 7px; padding: 8px 14px; cursor: pointer;
+    border: 1px solid var(--borde); background: var(--tarjeta); color: var(--texto);
+  }
+  button.primario { background: var(--acento); color: var(--acento-texto); border-color: var(--acento); width: 100%; font-weight: 600; padding: 10px; }
+  button.secundario { width: 100%; margin-top: 8px; color: var(--texto-2); }
+  button:disabled { opacity: .55; cursor: default; }
+  .errores { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 7px; background: var(--error-fondo); color: var(--error); white-space: pre-line; font-size: 13px; }
+  .lista-proyectos { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+  .lista-proyectos li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--borde); }
+  .lista-proyectos li:first-child { border-top: 0; }
+  .lista-proyectos button { padding: 2px 8px; font-size: 12.5px; }
+  .fecha { color: var(--texto-3); font-size: 12px; }
+  .vacio { color: var(--texto-3); }
+  #estado-linea { display: flex; align-items: center; gap: 10px; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; background: var(--texto-3); flex: none; }
+  .trabajando .punto { background: var(--acento); animation: latido 1s infinite alternate; }
+  .listo .punto { background: var(--ok); }
+  .error .punto { background: var(--error); }
+  @keyframes latido { to { opacity: .25; } }
+  pre.log {
+    font: 12px/1.45 var(--mono); background: var(--fondo); border: 1px solid var(--borde); border-radius: 7px;
+    padding: 10px; max-height: 180px; overflow: auto; margin: 10px 0 0; white-space: pre-wrap;
+  }
+  .cabecera-res { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cabecera-res h2 { margin: 0; }
+  .aviso { color: var(--aviso); font-size: 13px; margin: -4px 0 12px; }
+  .metricas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .metrica { border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; }
+  .metrica .nombre { font-size: 12px; color: var(--texto-2); }
+  .metrica .valor { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .metrica .unidad { font-size: 12.5px; font-weight: 400; color: var(--texto-2); margin-left: 3px; }
+  .metrica .ref { font-size: 12px; color: var(--texto-3); }
+  .imagenes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 14px; }
+  figure { margin: 0; border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; background: #fcfcfb; }
+  figure a { display: block; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 12.5px; color: #52514e; padding: 6px 10px; border-top: 1px solid #e4e3df; }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--borde); }
+  th { color: var(--texto-2); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--texto-2); white-space: nowrap; }
+  a { color: var(--acento); }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details pre { font: 12px/1.45 var(--mono); overflow: auto; background: var(--fondo); padding: 10px; border-radius: 7px; border: 1px solid var(--borde); }
+  .oculto { display: none !important; }
+  @media (max-width: 520px) { .campos { grid-template-columns: 1fr; } .imagenes { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Generador de antena solenoide</h1>
+  <p>Soporte con surco helicoidal y vueltas distribuidas para compensar el efecto de borde. Pase el cursor sobre cada parámetro para ver su explicación.</p>
+</header>
+<main>
+  <section>
+    <form id="formulario" class="tarjeta" novalidate>
+      <fieldset>
+        <legend>Proyecto</legend>
+        <label data-ayuda="proyecto"><span class="txt">Nombre del proyecto (obligatorio)</span>
+          <input type="text" id="proyecto" list="lista-nombres" autocomplete="off" required placeholder="p. ej. antena_47mT">
+        </label>
+        <datalist id="lista-nombres"></datalist>
+        <div class="derivado" id="d-proyecto">Los archivos se guardan en proyectos/&lt;nombre&gt;.</div>
+      </fieldset>
+      <fieldset>
+        <legend>Cilindro (soporte impreso)</legend>
+        <div class="campos">
+          <label data-ayuda="diametro_interno_mm"><span class="txt">Diámetro interno [mm]</span><input type="number" step="any" min="0" id="diametro_interno_mm"></label>
+          <label data-ayuda="diametro_externo_mm"><span class="txt">Diámetro externo [mm]</span><input type="number" step="any" min="0" id="diametro_externo_mm"></label>
+          <label data-ayuda="largo_cilindro_mm"><span class="txt">Largo [mm]</span><input type="number" step="any" min="0" id="largo_cilindro_mm"></label>
+          <label data-ayuda="margen_extremos_mm"><span class="txt">Margen en los extremos [mm]</span><input type="number" step="any" min="0" id="margen_extremos_mm"></label>
+        </div>
+        <div class="derivado" id="d-pared"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Cable y surco</legend>
+        <div class="campos">
+          <label data-ayuda="diametro_surco_mm"><span class="txt">Diámetro del surco [mm]</span><input type="number" step="any" min="0" id="diametro_surco_mm"></label>
+          <label data-ayuda="diametro_cable_mm"><span class="txt">Diámetro del cable [mm]</span><input type="number" step="any" min="0" id="diametro_cable_mm"></label>
+          <label data-ayuda="largo_cable_m"><span class="txt">Largo máximo del cable [m]</span><input type="number" step="any" min="0" id="largo_cable_m"></label>
+          <label data-ayuda="paso_minimo_mm"><span class="txt">Separación mínima [mm]</span><input type="number" step="any" min="0" id="paso_minimo_mm"></label>
+        </div>
+        <div class="derivado" id="d-cable"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Región homogénea (cilindro centrado)</legend>
+        <div class="campos">
+          <label data-ayuda="roi_diametro_mm"><span class="txt">Diámetro [mm]</span><input type="number" step="any" min="0" id="roi_diametro_mm"></label>
+          <label data-ayuda="roi_largo_mm"><span class="txt">Largo [mm]</span><input type="number" step="any" min="0" id="roi_largo_mm"></label>
+        </div>
+        <div class="derivado" id="d-roi"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Optimización</legend>
+        <div class="campos">
+          <label class="ancho" data-ayuda="objetivo"><span class="txt">Criterio de homogeneidad</span>
+            <select id="objetivo">
+              <option value="rms">RMS: desviación cuadrática media (recomendado)</option>
+              <option value="pico">Pico a pico: máximo − mínimo</option>
+            </select>
+          </label>
+        </div>
+        <label class="casilla" data-ayuda="largo_libre" style="margin-top:10px"><input type="checkbox" id="largo_libre">
+          <span class="txt">Largo del bobinado libre: el más corto que cumpla la inhomogeneidad máxima</span></label>
+        <div class="campos" style="margin-top:8px">
+          <label class="ancho" data-ayuda="inhomogeneidad_max_pct"><span class="txt" id="t-inhomogeneidad">Inhomogeneidad máxima [%]</span><input type="number" step="any" min="0" id="inhomogeneidad_max_pct"></label>
+        </div>
+        <div class="derivado" id="d-largo"></div>
+      </fieldset>
+      <fieldset>
+        <legend>Malla del STL</legend>
+        <div class="campos">
+          <label data-ayuda="segmentos_por_vuelta"><span class="txt">Segmentos por vuelta</span><input type="number" step="1" min="36" max="1440" id="segmentos_por_vuelta"></label>
+          <label data-ayuda="segmentos_arco_surco"><span class="txt">Segmentos del arco del surco</span><input type="number" step="1" min="4" max="64" id="segmentos_arco_surco"></label>
+        </div>
+        <div class="derivado" id="d-malla"></div>
+      </fieldset>
+      <button type="submit" class="primario" id="boton">Generar bobina</button>
+      <button type="button" class="secundario" id="restaurar">Restaurar valores por defecto</button>
+      <div class="errores" id="errores" role="alert"></div>
+    </form>
+
+    <div class="tarjeta">
+      <h2>Proyectos</h2>
+      <ul class="lista-proyectos" id="proyectos"><li class="vacio">Sin proyectos todavía.</li></ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="tarjeta" id="tarjeta-estado">
+      <div id="estado-linea"><span class="punto"></span><strong id="estado-texto">Listo para generar.</strong></div>
+      <pre class="log oculto" id="log"></pre>
+    </div>
+    <div class="tarjeta oculto" id="resultados">
+      <div class="cabecera-res">
+        <h2 id="res-titulo"></h2>
+        <button type="button" id="abrir">Abrir carpeta</button>
+      </div>
+      <p class="aviso oculto" id="res-aviso"></p>
+      <div class="metricas" id="metricas"></div>
+      <div class="imagenes" id="imagenes"></div>
+      <table>
+        <thead><tr><th>Archivo</th><th>Contenido</th><th class="num">Tamaño</th></tr></thead>
+        <tbody id="archivos"></tbody>
+      </table>
+      <details><summary>Resumen.txt</summary><pre id="resumen"></pre></details>
+    </div>
+  </section>
+</main>
+<div id="globo" role="tooltip" class="oculto"></div>
+
+<script>
+const CAMPOS = ["diametro_interno_mm", "diametro_externo_mm", "largo_cilindro_mm", "margen_extremos_mm",
+                "diametro_surco_mm", "diametro_cable_mm", "largo_cable_m", "paso_minimo_mm",
+                "roi_diametro_mm", "roi_largo_mm", "objetivo", "inhomogeneidad_max_pct",
+                "segmentos_por_vuelta", "segmentos_arco_surco"];
+const AYUDAS = {
+  proyecto: "Nombre de la carpeta donde se guardan todos los archivos: proyectos/<nombre>. Si ya existe, sus archivos se reemplazan. Use letras, números, espacios, '-', '_' o '.'.",
+  diametro_interno_mm: "Diámetro del hueco del cilindro, donde va la muestra.",
+  diametro_externo_mm: "Diámetro exterior del cilindro, donde se talla el surco. La pared, (externo − interno) / 2, debe dejar al menos 0.5 mm de plástico bajo el surco.",
+  largo_cilindro_mm: "Largo total del soporte impreso.",
+  margen_extremos_mm: "Distancia mínima desde cada borde del cilindro hasta la primera y la última vuelta. El bobinado más largo posible es el largo del cilindro menos dos márgenes; por ese tramo el cable sale en un canal recto hasta el borde. Debe ser al menos el diámetro del surco.",
+  diametro_surco_mm: "Ancho del surco en U donde se aloja el cable: fondo semicircular de este diámetro, al ras de la superficie. Si la impresora cierra un poco los huecos, hágalo 0.1–0.2 mm más ancho que el cable.",
+  diametro_cable_mm: "Diámetro real del conductor de cobre. Se usa para la resistencia y la inductancia, y para ubicar su centro: el cable apoya en el fondo del surco. Debe ser igual o menor que el surco.",
+  largo_cable_m: "Largo del cable que va en el surco helicoidal, sin los terminales. Fija el número de vueltas. El optimizador usa todo el cable, porque con la geometría fija la SNR crece con el largo del cable.",
+  paso_minimo_mm: "Distancia mínima entre los centros de dos vueltas vecinas; manda en los extremos, donde las vueltas se juntan. Debe ser al menos el surco + 0.4 mm; se recomienda surco + 1 mm para que la pared entre surcos sea imprimible.",
+  roi_diametro_mm: "Diámetro de la región cilíndrica, centrada en el soporte, donde se busca un campo homogéneo. Debe ser menor que el diámetro interno; cuanto más se acerca al cable, peor es la homogeneidad alcanzable.",
+  roi_largo_mm: "Largo de la región homogénea a lo largo del eje, centrada en el soporte.",
+  objetivo: "Qué se minimiza (y qué se limita con el largo libre). RMS: desviación cuadrática media de Bz en toda la región; equivale a minimizar el error cuadrático medio. Pico a pico: diferencia entre el punto más fuerte y el más débil. En las pruebas, optimizar el pico a pico baja el peor caso sólo un 4–8 % pero empeora el RMS un 33–55 %, porque el pico lo deciden unos pocos puntos junto al cable. Recomendado: RMS.",
+  largo_libre: "Activado: busca el bobinado más corto (vueltas más juntas, más campo por amperio) que cumpla la inhomogeneidad máxima, verificada sobre la hélice real. Desactivado: usa todo el largo disponible y busca la máxima homogeneidad.",
+  inhomogeneidad_max_pct: "Límite de inhomogeneidad, según el criterio elegido, que debe cumplir el bobinado cuando el largo es libre. Si no se alcanza ni con el largo máximo, se usa la máxima homogeneidad posible y se avisa.",
+  segmentos_por_vuelta: "Resolución angular de la hélice: cuántos tramos rectos forman cada vuelta del surco (el cilindro usa el doble). Con 360 el error de forma es de milésimas de milímetro. Más segmentos dan un STL más grande y una generación más lenta.",
+  segmentos_arco_surco: "Tramos con que se dibuja el fondo semicircular del surco. Con 24 el fondo queda liso para cualquier impresora.",
+};
+const IMAGENES = [
+  ["distribucion_vueltas.png", "Distribución de vueltas y paso"],
+  ["campo_perfiles.png", "Perfiles de Bz"],
+  ["mapa_homogeneidad.png", "Mapa de homogeneidad"],
+  ["corte_stl.png", "Corte del soporte"],
+];
+let defectos = {};
+let sondeo = null;
+let existentes = new Set();
+
+const $ = (id) => document.getElementById(id);
+const num = (id) => parseFloat($(id).value);
+const fmt = (x, d = 2) => Number.isFinite(x) ? x.toLocaleString("es", {minimumFractionDigits: d, maximumFractionDigits: d}) : "–";
+const escapar = (t) => String(t).replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const conDefecto = (campo) => {
+  const v = defectos[campo];
+  if (v === undefined) return "";
+  if (campo === "objetivo") return v === "rms" ? "RMS" : "pico a pico";
+  if (campo === "largo_libre") return v ? "activado" : "desactivado";
+  return String(v).replace(".", ",");
+};
+
+async function pedir(url, opciones) {
+  const r = await fetch(url, opciones);
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(datos.error || `Error ${r.status}`);
+  return datos;
+}
+
+// ----- Notas de ayuda al pasar el cursor -----
+function prepararAyudas() {
+  for (const etiqueta of document.querySelectorAll("label[data-ayuda]")) {
+    const insignia = document.createElement("span");
+    insignia.className = "ayuda";
+    insignia.textContent = "?";
+    insignia.tabIndex = 0;
+    insignia.setAttribute("aria-label", "Ayuda: " + AYUDAS[etiqueta.dataset.ayuda]);
+    etiqueta.querySelector(".txt").after(insignia);
+    etiqueta.addEventListener("mouseenter", () => mostrarGlobo(etiqueta));
+    etiqueta.addEventListener("mouseleave", ocultarGlobo);
+    insignia.addEventListener("focus", () => mostrarGlobo(etiqueta));
+    insignia.addEventListener("blur", ocultarGlobo);
+  }
+}
+
+function mostrarGlobo(etiqueta) {
+  const campo = etiqueta.dataset.ayuda;
+  const globo = $("globo");
+  const defecto = conDefecto(campo);
+  globo.innerHTML = escapar(AYUDAS[campo]) +
+    (defecto ? `<br><strong>Valor por defecto: ${escapar(defecto)}</strong>` : "");
+  globo.classList.remove("oculto");
+  const r = etiqueta.getBoundingClientRect();
+  const ancho = globo.offsetWidth;
+  const izquierda = Math.min(Math.max(8, r.left), window.innerWidth - ancho - 8);
+  let arriba = r.bottom + 6;
+  if (arriba + globo.offsetHeight > window.innerHeight - 8) arriba = r.top - globo.offsetHeight - 6;
+  globo.style.left = (izquierda + window.scrollX) + "px";
+  globo.style.top = (arriba + window.scrollY) + "px";
+}
+
+function ocultarGlobo() { $("globo").classList.add("oculto"); }
+
+// ----- Valores calculados al editar -----
+function derivados() {
+  const di = num("diametro_interno_mm"), de = num("diametro_externo_mm"), lc = num("largo_cilindro_mm");
+  const margen = num("margen_extremos_mm"), ds = num("diametro_surco_mm"), dc = num("diametro_cable_mm");
+  const cable = num("largo_cable_m"), paso = num("paso_minimo_mm");
+  const pared = (de - di) / 2, bajo = pared - ds;
+  const avisosPared = [];
+  if (bajo < 0.5) avisosPared.push("deben quedar al menos 0,5 mm bajo el surco");
+  if (margen < ds) avisosPared.push("el margen debe ser al menos el surco");
+  $("d-pared").textContent = Number.isFinite(pared)
+    ? `Pared de ${fmt(pared)} mm; bajo el surco quedan ${fmt(bajo)} mm.` +
+      (avisosPared.length ? " Ojo: " + avisosPared.join("; ") + "." : "") : "";
+  $("d-pared").classList.toggle("malo", avisosPared.length > 0);
+
+  const rc = de / 2 - ds + dc / 2;              // centro del cable apoyado en el fondo del surco
+  const vueltas = cable * 1000 / (2 * Math.PI * rc);
+  const lmax = lc - 2 * margen;
+  const avisosCable = [];
+  if (dc > ds) avisosCable.push("el cable es más grueso que el surco");
+  if (paso < ds + 0.4) avisosCable.push(`la separación mínima debe ser al menos ${fmt(ds + 0.4)} mm`);
+  if (lmax / vueltas < paso) avisosCable.push(`no cabe: máximo ${fmt(lmax / paso * 2 * Math.PI * rc / 1000)} m`);
+  $("d-cable").textContent = Number.isFinite(vueltas)
+    ? `≈ ${fmt(vueltas, 1)} vueltas; centro del cable a ${fmt(rc)} mm del eje.` +
+      (avisosCable.length ? " Ojo: " + avisosCable.join("; ") + "." : "") : "";
+  $("d-cable").classList.toggle("malo", avisosCable.length > 0);
+
+  const rd = num("roi_diametro_mm"), rl = num("roi_largo_mm");
+  $("d-roi").textContent = Number.isFinite(rd / di)
+    ? `Ocupa el ${fmt(100 * rd / di, 0)} % del diámetro interno y el ${fmt(100 * rl / lc, 0)} % del largo.` : "";
+  $("d-roi").classList.toggle("malo", rd >= di || rl > lc);
+
+  const libre = $("largo_libre").checked;
+  const criterio = $("objetivo").value === "rms" ? "RMS" : "pico a pico";
+  $("t-inhomogeneidad").textContent = `Inhomogeneidad ${criterio} máxima [%]`;
+  $("inhomogeneidad_max_pct").disabled = !libre;
+  $("d-largo").textContent = Number.isFinite(lmax)
+    ? (libre ? `El largo del bobinado se elige entre el mínimo que permite el cable y ${fmt(lmax, 0)} mm.`
+             : `Usa todo el largo disponible (${fmt(lmax, 0)} mm) y busca la máxima homogeneidad.`) : "";
+
+  const spv = num("segmentos_por_vuelta"), arco = num("segmentos_arco_surco");
+  const triangulos = vueltas * spv * (2 * (arco + 3) + 12);
+  const malaMalla = !(Number.isInteger(spv) && spv >= 36 && spv <= 1440 && Number.isInteger(arco) && arco >= 4 && arco <= 64);
+  $("d-malla").textContent = Number.isFinite(triangulos)
+    ? `≈ ${fmt(triangulos / 1e6, 2)} M triángulos, STL de ≈ ${fmt(triangulos * 50 / 1e6, 0)} MB.` +
+      (malaMalla ? " Ojo: use enteros (36–1440 por vuelta, 4–64 en el arco)." : "") : "";
+  $("d-malla").classList.toggle("malo", malaMalla || triangulos > 5e6);
+}
+
+function validarNombre() {
+  const nombre = $("proyecto").value.trim();
+  const valido = /^[\p{L}\p{N}_\-. ]{1,60}$/u.test(nombre) && !/[. ]$/.test(nombre);
+  $("d-proyecto").textContent = nombre
+    ? (valido ? `Se guardará en proyectos/${nombre}` +
+                (existentes.has(nombre) ? " (ya existe: se reemplazarán sus archivos)." : ".")
+              : "Use letras, números, espacios, '-', '_' o '.' (máximo 60).")
+    : "Los archivos se guardan en proyectos/<nombre>.";
+  $("d-proyecto").classList.toggle("malo", !!nombre && !valido);
+  return valido;
+}
+
+function cargarValores(valores) {
+  for (const c of CAMPOS) $(c).value = valores[c];
+  $("largo_libre").checked = valores.largo_libre;
+  derivados();
+}
+
+async function cargarProyectos() {
+  const lista = await pedir("/api/proyectos");
+  existentes = new Set(lista.map((p) => p.nombre));
+  $("lista-nombres").innerHTML = lista.map((p) => `<option value="${escapar(p.nombre)}">`).join("");
+  $("proyectos").innerHTML = lista.length ? lista.map((p) => `
+    <li><span><strong>${escapar(p.nombre)}</strong><br><span class="fecha">${p.fecha}${p.completo ? "" : " · incompleto"}</span></span>
+        ${p.completo ? `<button type="button" data-ver="${escapar(p.nombre)}">Ver</button>` : ""}</li>`).join("")
+    : `<li class="vacio">Sin proyectos todavía.</li>`;
+  validarNombre();
+}
+
+// ----- Generación y resultados -----
+function mostrarEstado(e) {
+  $("tarjeta-estado").className = "tarjeta " + e.estado;
+  const textos = {
+    inactivo: "Listo para generar.",
+    trabajando: `Generando «${e.proyecto}»… ${e.segundos ?? 0} s`,
+    listo: `«${e.proyecto}» generado en ${e.segundos} s.`,
+    error: `Error al generar «${e.proyecto}».`,
+  };
+  $("estado-texto").textContent = textos[e.estado] || e.estado;
+  const log = $("log");
+  log.classList.toggle("oculto", !e.log || !e.log.length);
+  log.textContent = (e.log || []).join("\n");
+  log.scrollTop = log.scrollHeight;
+  $("boton").disabled = e.estado === "trabajando";
+}
+
+async function seguir() {
+  clearTimeout(sondeo);
+  const e = await pedir("/api/estado");
+  mostrarEstado(e);
+  if (e.estado === "trabajando") {
+    sondeo = setTimeout(seguir, 800);
+  } else if (e.estado === "listo") {
+    await cargarProyectos();
+    await verProyecto(e.proyecto);
+  } else if (e.estado === "error") {
+    mostrarErrores(e.error);
+  }
+}
+
+function mostrarErrores(texto) {
+  $("errores").style.display = texto ? "block" : "none";
+  $("errores").textContent = texto || "";
+}
+
+function metrica(nombre, valor, unidad, ref) {
+  return `<div class="metrica"><div class="nombre">${nombre}</div>
+    <div class="valor">${valor}<span class="unidad">${unidad}</span></div>
+    ${ref ? `<div class="ref">${ref}</div>` : ""}</div>`;
+}
+
+async function verProyecto(nombre) {
+  const d = await pedir("/api/proyecto/" + encodeURIComponent(nombre));
+  const e = d.elegida, u = d.uniforme, p = d.parametros, info = d.diseno;
+  $("resultados").classList.remove("oculto");
+  $("res-titulo").textContent = `Proyecto: ${d.proyecto}`;
+  const criterio = p.objetivo === "pico" ? "pico a pico" : "RMS";
+  const aviso = info.largo_libre && info.cumple_objetivo === false
+    ? `No se alcanza ${fmt(p.inhomogeneidad_max_pct, 1)} % ${criterio} ni con el largo máximo; se usó la máxima homogeneidad posible.` : "";
+  $("res-aviso").textContent = aviso;
+  $("res-aviso").classList.toggle("oculto", !aviso);
+  $("metricas").innerHTML = [
+    metrica("Largo del bobinado", fmt(e.largo_bobinado_mm, 1), "mm", info.largo_libre ? "libre" : "máximo"),
+    metrica("Vueltas", fmt(e.vueltas, 2), "", `${fmt(e.largo_cable_m, 2)} m de cable`),
+    metrica("Inhomogeneidad RMS", fmt(e.helice.rms_pct), "%", `uniforme: ${fmt(u.helice.rms_pct)} %`),
+    metrica("Pico a pico", fmt(e.helice.pico_pico_pct, 1), "%", `uniforme: ${fmt(u.helice.pico_pico_pct, 1)} %`),
+    metrica("Bz medio en la región", fmt(e.helice.bz_medio_uT_por_A, 1), "µT/A", `uniforme: ${fmt(u.helice.bz_medio_uT_por_A, 1)}`),
+    metrica("Separación entre vueltas", `${fmt(e.paso_extremo_mm, 1)}–${fmt(e.paso_centro_mm, 1)}`, "mm", "extremos – centro"),
+    metrica("Inductancia estimada", fmt(e.inductancia_uH, 1), "µH", ""),
+    metrica("Resistencia DC", fmt(info.resistencia_dc_mohm, 0), "mΩ", `cobre, ${fmt(p.diametro_cable_mm || p.diametro_surco_mm, 2)} mm`),
+  ].join("");
+  const ruta = (a) => `/proyectos/${encodeURIComponent(d.proyecto)}/${a}`;
+  const version = Object.fromEntries(d.archivos.map((a) => [a.nombre, a.version]));
+  $("imagenes").innerHTML = IMAGENES.filter(([a]) => version[a]).map(([a, t]) =>
+    `<figure><a href="${ruta(a)}?v=${version[a]}" target="_blank" rel="noopener">
+       <img src="${ruta(a)}?v=${version[a]}" alt="${t}" loading="lazy"></a><figcaption>${t}</figcaption></figure>`).join("");
+  $("archivos").innerHTML = d.archivos.map((a) => `<tr>
+      <td><a href="${ruta(a.nombre)}?descargar=1&v=${a.version}">${a.nombre}</a></td>
+      <td>${escapar(a.descripcion)}</td>
+      <td class="num">${a.bytes > 1e6 ? fmt(a.bytes / 1e6, 1) + " MB" : fmt(a.bytes / 1e3, 0) + " kB"}</td></tr>`).join("");
+  $("resumen").textContent = d.resumen;
+  $("abrir").dataset.proyecto = d.proyecto;
+}
+
+$("formulario").addEventListener("input", () => { derivados(); validarNombre(); });
+$("formulario").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  mostrarErrores("");
+  const proyecto = $("proyecto").value.trim();
+  if (!proyecto) { mostrarErrores("Escriba un nombre de proyecto antes de generar."); $("proyecto").focus(); return; }
+  if (!validarNombre()) { mostrarErrores("El nombre del proyecto no es válido."); return; }
+  const datos = {proyecto, largo_libre: $("largo_libre").checked};
+  for (const c of CAMPOS) datos[c] = $(c).value;
+  try {
+    await pedir("/api/generar", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(datos)});
+    $("resultados").classList.add("oculto");
+    seguir();
+  } catch (err) {
+    mostrarErrores(err.message);
+  }
+});
+$("restaurar").addEventListener("click", () => { cargarValores(defectos); mostrarErrores(""); });
+$("proyectos").addEventListener("click", (ev) => {
+  const nombre = ev.target.dataset.ver;
+  if (nombre) verProyecto(nombre).catch((err) => mostrarErrores(err.message));
+});
+$("abrir").addEventListener("click", () =>
+  pedir("/api/abrir", {method: "POST", headers: {"Content-Type": "application/json"},
+                       body: JSON.stringify({proyecto: $("abrir").dataset.proyecto})})
+    .catch((err) => mostrarErrores(err.message)));
+
+(async () => {
+  prepararAyudas();
+  const d = await pedir("/api/defaults");
+  defectos = d.valores;
+  cargarValores(defectos);
+  await cargarProyectos();
+  await seguir();
+})().catch((err) => mostrarErrores("No se pudo conectar con el servidor: " + err.message));
+</script>
+</body>
+</html>

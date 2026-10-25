@@ -1,0 +1,8 @@
+# Los lanzadores de Windows necesitan fin de línea CRLF aunque se clonen desde otro sistema
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+*.py text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.png binary

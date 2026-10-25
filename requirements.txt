@@ -1,0 +1,5 @@
+# Probado con Python 3.14, numpy 2.4.3, scipy 1.17.1, matplotlib 3.10.8 y manifold3d 3.5.4
+numpy>=2.0,<3
+scipy>=1.11
+matplotlib>=3.8
+manifold3d>=3.5,<4
